@@ -6,3 +6,4 @@ tests/**/*.o
 .idea/
 *.swp
 .claude
+plan.md

@@ -78,11 +78,100 @@ EOF
         && ok "multi-input dump" || die "multi-input dump"
 }
 
+# ----------------------------------------------------------------------------
+# Iteration 1 (M2): hello freestanding
+# ----------------------------------------------------------------------------
+it2_hello() {
+    echo "=== Iteration 1 (M2): hello freestanding ==="
+    local d=$ROOT/tests/programs/01_hello_freestanding
+    ( cd "$d" && gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 hello.c -o hello.o )
+    
+    "$LINKER" -o "$d/hello" "$d/hello.o"
+    chmod +x "$d/hello"
+    
+    local out=$("$d/hello")
+    [[ "$out" == "hi" || "$out" == "hi\n" ]] && ok "hello output" || die "hello output: '$out'"
+}
+
+# ----------------------------------------------------------------------------
+# Iteration 1 (M3): two TU extern
+# ----------------------------------------------------------------------------
+it3_two_tu() {
+    echo "=== Iteration 1 (M3): two TU extern ==="
+    local d=$ROOT/tests/programs/02_two_tu_extern
+    ( cd "$d" && \
+      gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 main.c -o main.o && \
+      gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 math.c -o math.o )
+    
+    "$LINKER" -o "$d/two_tu" "$d/main.o" "$d/math.o"
+    chmod +x "$d/two_tu"
+    
+    local out=$("$d/two_tu")
+    [[ "$out" == "ok" || "$out" == "ok\n" ]] && ok "two_tu output" || die "two_tu output: '$out'"
+}
+
+# ----------------------------------------------------------------------------
+# Iteration 2 (M4): rodata, data, bss
+# ----------------------------------------------------------------------------
+it4_data() {
+    echo "=== Iteration 2 (M4): rodata, data, bss ==="
+    local d=$ROOT/tests/programs/04_rodata_data_bss
+    ( cd "$d" && gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 main.c -o main.o )
+    
+    "$LINKER" -o "$d/data_test" "$d/main.o"
+    chmod +x "$d/data_test"
+    
+    local out=$("$d/data_test")
+    [[ "$out" == "data test" || "$out" == "data test\n" ]] && ok "data_test output" || die "data_test output: '$out'"
+    
+    # Check segments with readelf
+    local phdrs=$(readelf -l "$d/data_test")
+    echo "$phdrs" | grep -q "LOAD" || die "no LOAD segments"
+    # We expect at least 3 LOAD segments (R-X, R--, RW-) or combined if logic allows.
+    # Our EmitExecutable creates up to 4 LOAD segments (header, text, rodata, data+bss).
+    local load_count=$(echo "$phdrs" | grep -c "LOAD")
+    [[ $load_count -ge 3 ]] && ok "segment count ($load_count)" || die "segment count: $load_count"
+}
+
+# ----------------------------------------------------------------------------
+# Iteration 2 (M5): debug preservation
+# ----------------------------------------------------------------------------
+it5_debug() {
+    echo "=== Iteration 2 (M5): debug preservation ==="
+    local d=$ROOT/tests/programs/05_debug_breakpoint
+    ( cd "$d" && gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 main.c -o main.o )
+    
+    "$LINKER" -o "$d/debug_test" "$d/main.o"
+    chmod +x "$d/debug_test"
+    
+    # Use gdb to verify we can set a breakpoint on line 7 (x += 2)
+    # We check if gdb successfully hits the breakpoint.
+    if gdb --version >/dev/null 2>&1; then
+        local gdb_out=$(gdb --batch -ex 'b main.c:7' -ex run "$d/debug_test" 2>&1)
+        if echo "$gdb_out" | grep -q "Breakpoint 1, _start"; then
+            ok "gdb breakpoint hit"
+        else
+            die "gdb failed to hit breakpoint: $gdb_out"
+        fi
+    else
+        echo "gdb not found, skipping functional debug test"
+        # Fallback: check if debug sections exist and have non-zero size
+        readelf -S "$d/debug_test" | grep -q ".debug_info" && ok "has debug info" || die "missing debug info"
+    fi
+}
+
 main() {
     build_linker
     local iter=${1:-1}
     case "$iter" in
-        1|all) it1_parse ;;
+        1|all) it1_parse ;&
+        2) it2_hello ;;
+        3) it3_two_tu ;;
+        4) it4_data ;;
+        5) it5_debug ;;
+    esac
+    case "$iter" in
+        all) it2_hello ; it3_two_tu ; it4_data ; it5_debug ;;
     esac
     echo
     echo "=== $PASS passed, $FAIL failed ==="
