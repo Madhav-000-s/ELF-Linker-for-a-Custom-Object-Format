@@ -160,6 +160,30 @@ it5_debug() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# Iteration 3 (M6): weak symbols
+# ----------------------------------------------------------------------------
+it6_weak() {
+    echo "=== Iteration 3 (M6): weak symbols ==="
+    local d=$ROOT/tests/programs/03_weak_symbols
+    ( cd "$d" && \
+      gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 main.c -o main.o && \
+      gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 lib.c -o lib.o && \
+      gcc -c -ffreestanding -fno-pic -fno-stack-protector -nostdlib -g -O0 override.c -o override.o )
+
+    # 1. Link without override: should pick weak version (v1)
+    "$LINKER" -o "$d/weak_v1" "$d/main.o" "$d/lib.o"
+    chmod +x "$d/weak_v1"
+    local out1=$("$d/weak_v1")
+    [[ "$out1" == "v1" || "$out1" == "v1\n" ]] && ok "weak-only resolution" || die "weak-only: '$out1'"
+
+    # 2. Link with override: should pick strong version (v2)
+    "$LINKER" -o "$d/weak_v2" "$d/main.o" "$d/lib.o" "$d/override.o"
+    chmod +x "$d/weak_v2"
+    local out2=$("$d/weak_v2")
+    [[ "$out2" == "v2" || "$out2" == "v2\n" ]] && ok "strong-over-weak resolution" || die "strong-over-weak: '$out2'"
+}
+
 main() {
     build_linker
     local iter=${1:-1}
@@ -169,9 +193,10 @@ main() {
         3) it3_two_tu ;;
         4) it4_data ;;
         5) it5_debug ;;
+        6) it6_weak ;;
     esac
     case "$iter" in
-        all) it2_hello ; it3_two_tu ; it4_data ; it5_debug ;;
+        all) it2_hello ; it3_two_tu ; it4_data ; it5_debug ; it6_weak ;;
     esac
     echo
     echo "=== $PASS passed, $FAIL failed ==="
