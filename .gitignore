@@ -1,0 +1,8 @@
+build/
+*.o
+tests/**/out
+tests/**/*.o
+.vscode/
+.idea/
+*.swp
+.claude

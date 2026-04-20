@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wsl --status)",
+      "Bash(wsl -e bash -c \"uname -a && which gcc readelf gdb cmake\")",
+      "Bash(wsl --list --verbose)",
+      "Bash(docker --version)",
+      "Bash(docker context *)",
+      "Bash(docker info *)",
+      "Bash(where gcc *)",
+      "Bash(where readelf *)",
+      "Bash(where gdb *)",
+      "Bash(gcc --version)",
+      "Bash(\"/c/Program Files/Docker/Docker/Docker Desktop.exe\")",
+      "Bash(echo \"launched, pid=$!\")",
+      "Bash(pwd -W)",
+      "Bash(docker run *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker run --rm -v \"$\\(pwd -W\\):/work\" -w /work gcc:13 bash -c \"echo 'int main\\(\\){return 0;}' > /tmp/t.c && gcc -c /tmp/t.c -o /tmp/t.o && readelf -h /tmp/t.o | head -12 && which gdb cmake && gdb --version | head -1 && cmake --version | head -1\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker run --rm gcc:13 bash -c \"which gdb cmake make g++ 2>&1; apt list --installed 2>/dev/null | grep -E 'gdb|cmake'\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker build -t elf-linker-dev:1 -f tests/Dockerfile.dev tests/)",
+      "Bash(MSYS_NO_PATHCONV=1 docker run --rm elf-linker-dev:1 bash -c \"gcc --version | head -1; cmake --version | head -1; gdb --version | head -1; readelf --version | head -1\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker run --rm -v \"$\\(pwd -W\\):/work\" -w /work elf-linker-dev:1 bash -c \"cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug 2>&1 | tail -10 && cmake --build build -j 2>&1 | tail -40\")",
+      "Bash(MSYS_NO_PATHCONV=1 docker run --rm -v \"$\\(pwd -W\\):/work\" -w /work elf-linker-dev:1 bash tests/run_tests.sh 1)"
+    ]
+  }
+}
